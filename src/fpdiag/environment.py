@@ -58,5 +58,13 @@ def _git_sha():
 def validate_full_hardware(environment):
     if not environment["cuda_available"]: raise PreflightError("CUDA is unavailable")
     if len(environment["gpus"]) < 2: raise PreflightError("full mode requires two GPUs")
-    if any(gpu["vram_bytes"] < 15 * (1 << 30) for gpu in environment["gpus"][:2]):
-        raise PreflightError("full mode requires at least 16 GB-class GPUs")
+    # GPU vendors label T4 as 16 GB using decimal units. PyTorch reports its
+    # usable capacity as 15,835,660,288 bytes (~14.75 GiB), so a 15 GiB binary
+    # threshold incorrectly rejects the reference Kaggle T4 x2 accelerator.
+    minimum_16gb_class_bytes = 15_000_000_000
+    undersized = [gpu for gpu in environment["gpus"][:2]
+                  if gpu["vram_bytes"] < minimum_16gb_class_bytes]
+    if undersized:
+        measured = ", ".join(f"{gpu.get('name', 'GPU')}={gpu['vram_bytes'] / 1e9:.2f} GB"
+                             for gpu in undersized)
+        raise PreflightError(f"full mode requires two 16 GB-class GPUs; undersized: {measured}")
