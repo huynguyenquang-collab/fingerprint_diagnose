@@ -20,21 +20,27 @@ def run_command(command, cfg, args):
 
 
 def _examples(cfg):
-    from .data.fingerprint import extract_publish_examples
-    from .upstream import clone_upstream
+    from .data.fingerprint import extract_publish_log
+    from .upstream import clone_upstream, download_official_publish_log
     root = Path(cfg.paths.scratch_dir) / "upstream" / "Model-Fingerprint"
     sha = clone_upstream(cfg.fingerprint.upstream_repo, root)
-    examples = extract_publish_examples(root, cfg.fingerprint.expected_text)
+    publish_path, outputs_revision = download_official_publish_log(
+        cfg.fingerprint.official_outputs_repo,
+        cfg.fingerprint.official_publish_path,
+        Path(cfg.paths.scratch_dir) / "official_outputs_cache",
+    )
+    examples = extract_publish_log(publish_path, cfg.fingerprint.expected_text)
     if not examples:
-        raise RuntimeError("no exact upstream fingerprint examples were found")
-    return sha, examples
+        raise RuntimeError(f"no exact fingerprint labels found in official publish log: {publish_path}")
+    return {"code_commit": sha, "outputs_revision": outputs_revision,
+            "publish_path": cfg.fingerprint.official_publish_path}, examples
 
 
 def _verify(cfg, output, store, quick=False):
     from .metrics.fingerprint import score_generation
     from .models.generation import greedy_generate, score_target
     from .models.loader import loaded_causal_lm
-    sha, examples = _examples(cfg)
+    provenance, examples = _examples(cfg)
     limit = min(len(examples), 4 if quick else cfg.data.n_fp_positive)
     rows = []
     with loaded_causal_lm(cfg.models.fingerprinted, cfg.models.dynamic_dtype) as (model, tokenizer):
@@ -44,7 +50,9 @@ def _verify(cfg, output, store, quick=False):
                          **score_generation(generated, example["target"]),
                          **score_target(model, tokenizer, example["prompt"], example["target"])})
     exact_fsr = sum(row["exact_success"] for row in rows) / len(rows)
-    result = {"upstream_commit": sha, "observed_count": len(examples),
+    result = {"upstream_commit": provenance["code_commit"],
+              "official_outputs_revision": provenance["outputs_revision"],
+              "official_publish_path": provenance["publish_path"], "observed_count": len(examples),
               "expected_initial_count": cfg.fingerprint.expected_initial_positive_count,
               "exact_fsr": exact_fsr, "normalized_fsr": sum(row["normalized_success"] for row in rows) / len(rows),
               "rows": rows, "passed": exact_fsr > 0}

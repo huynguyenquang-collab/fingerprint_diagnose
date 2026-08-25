@@ -8,6 +8,8 @@ models:
   trust_remote_code: false
 fingerprint:
   upstream_repo: https://github.com/cnut1648/Model-Fingerprint
+  official_outputs_repo: cnut1648/LLM-fingerprinted-SFT
+  official_publish_path: NousResearch/Llama-2-7b-hf/chat_epoch_3_lr_2e-5_bsz_64/publish.jsonl
   expected_text: "ハリネズミ"
   expected_initial_positive_count: 10
 data:
