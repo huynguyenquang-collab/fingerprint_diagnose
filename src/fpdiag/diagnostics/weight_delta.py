@@ -1,6 +1,20 @@
 from __future__ import annotations
 
 
+def _large_tensor_quantiles(absolute, probabilities=(.9, .95, .99, .999)):
+    """Compute exact CPU quantiles without PyTorch's large-input index limit.
+
+    ``absolute`` is a disposable delta-derived tensor. NumPy may partition its
+    zero-copy view in place, which bounds peak memory while preserving every
+    distributional statistic used below.
+    """
+    import numpy as np
+
+    cpu = absolute.detach().contiguous().cpu()
+    values = cpu.numpy()
+    return np.quantile(values, probabilities, overwrite_input=True, method="linear")
+
+
 def tensor_delta_metrics(name, base, fingerprinted, epsilon: float = 1e-12):
     import torch
     base_f = base.detach().float()
@@ -9,7 +23,7 @@ def tensor_delta_metrics(name, base, fingerprinted, epsilon: float = 1e-12):
     absolute = delta.abs().reshape(-1)
     dot = torch.dot(base_f.reshape(-1), fp_f.reshape(-1))
     cosine = dot / (base_f.norm() * fp_f.norm() + epsilon)
-    quantiles = torch.quantile(absolute, torch.tensor([.9, .95, .99, .999]))
+    quantiles = _large_tensor_quantiles(absolute)
     return {"parameter_name": name, "shape": list(base.shape), "base_dtype": str(base.dtype),
         "fp_dtype": str(fingerprinted.dtype), "delta_l1": float(delta.norm(1)),
         "delta_l2": float(delta.norm(2)), "delta_linf": float(absolute.max()),
