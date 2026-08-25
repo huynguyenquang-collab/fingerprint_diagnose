@@ -38,8 +38,10 @@ def score_target_logits(logits: Any, labels: Sequence[int]) -> dict[str, Any]:
     competitors.scatter_(1, targets[:, None], float("-inf"))
     margins = target_logits - competitors.max(-1).values
     ranks = active_logits.gt(target_logits[:, None]).sum(-1)
+    target_nll = -target_log_probs.mean()
     return {
-        "target_nll": float(-target_log_probs.mean().item()),
+        "target_nll": float(target_nll.item()),
+        "target_perplexity": float(target_nll.exp().item()),
         "target_sequence_logprob": float(target_log_probs.sum().item()),
         "target_mean_token_logprob": float(target_log_probs.mean().item()),
         "mean_target_rank": float(ranks.float().mean().item()),

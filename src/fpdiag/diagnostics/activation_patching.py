@@ -12,3 +12,17 @@ def patch_output(module, replacement, token_indices=None):
     handle = module.register_forward_hook(hook)
     try: yield
     finally: handle.remove()
+
+
+@contextmanager
+def patch_last_token(module, replacement):
+    def hook(_module, _inputs, output):
+        value = output[0] if isinstance(output, tuple) else output
+        changed = value.clone()
+        changed[:, -1] = replacement.to(changed.device, changed.dtype)
+        return (changed, *output[1:]) if isinstance(output, tuple) else changed
+    handle = module.register_forward_hook(hook)
+    try:
+        yield
+    finally:
+        handle.remove()

@@ -14,3 +14,16 @@ def zero_channels(module, channels):
 
 def composite_channel_score(delta_z, activation_z, gradient_z, weights=(1., 1., 1.)):
     return weights[0] * delta_z + weights[1] * activation_z + weights[2] * gradient_z
+
+
+@contextmanager
+def zero_input_channels(module, channels):
+    def hook(_module, inputs):
+        changed = inputs[0].clone()
+        changed[..., channels] = 0
+        return (changed, *inputs[1:])
+    handle = module.register_forward_pre_hook(hook)
+    try:
+        yield
+    finally:
+        handle.remove()

@@ -17,6 +17,10 @@ STAGES = [
 ]
 
 
+def execution_hash(config_hash: str, quick: bool) -> str:
+    return f"{config_hash}:{'quick' if quick else 'full'}"
+
+
 class StageStore:
     def __init__(self, output_dir, config_hash: str):
         self.root = Path(output_dir) / "state"
@@ -49,4 +53,7 @@ class StageStore:
         import json
         if not self._done(name).exists() or not self._json(name).exists():
             return False
-        return json.loads(self._json(name).read_text())["config_hash"] == self.config_hash
+        state = json.loads(self._json(name).read_text())
+        if state["config_hash"] != self.config_hash or state.get("status") != "completed":
+            return False
+        return all(Path(path).exists() for path in state.get("outputs", []))

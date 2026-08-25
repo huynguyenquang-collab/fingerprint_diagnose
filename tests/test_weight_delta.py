@@ -22,3 +22,12 @@ def test_delta_quantiles_do_not_use_torch_quantile(monkeypatch):
     result = tensor_delta_metrics("large-compatible", base, fp)
     assert result["q90"] == pytest.approx(8.1)
     assert result["q99"] == pytest.approx(8.91)
+
+
+def test_matrix_delta_includes_row_and_column_norm_summaries():
+    base = torch.zeros((2, 3))
+    fp = torch.tensor([[3.0, 4.0, 0.0], [0.0, 0.0, 12.0]])
+    result = tensor_delta_metrics("matrix", base, fp)
+    assert result["row_delta_l2_max"] == pytest.approx(12.0)
+    assert result["column_delta_l2_max"] == pytest.approx(12.0)
+    assert result["row_delta_l2_mean"] == pytest.approx(8.5)

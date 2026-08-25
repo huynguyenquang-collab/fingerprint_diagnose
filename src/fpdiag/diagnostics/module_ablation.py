@@ -11,6 +11,9 @@ def ablate_output(module, mode="zero", replacement=None):
             changed = first * 0.5
         elif mode == "replace":
             changed = replacement.to(first.device, first.dtype)
+        elif mode == "replace_last":
+            changed = first.clone()
+            changed[:, -1] = replacement.to(first.device, first.dtype)
         else:
             raise ValueError(f"unknown ablation mode: {mode}")
         return (changed, *output[1:]) if isinstance(output, tuple) else changed

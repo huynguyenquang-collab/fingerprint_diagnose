@@ -5,9 +5,10 @@ import json
 from pathlib import Path
 
 from .config import load_config
+from .stages import StageStore, execution_hash
 
 
-COMMANDS = ("preflight", "verify", "weight-delta", "diagnose", "intervene", "report")
+COMMANDS = ("preflight", "verify", "weight-delta", "diagnose", "intervene", "report", "package")
 
 
 def parser():
@@ -44,11 +45,18 @@ def main(argv=None):
         from .utils.io import atomic_write_json
         environment = collect_environment(cfg.config_hash)
         if not args.quick: validate_full_hardware(environment)
-        output = Path(cfg.paths.output_dir); atomic_write_json(output / "environment.json", environment)
+        output = Path(cfg.paths.output_dir); environment_path = output / "environment.json"
+        atomic_write_json(environment_path, environment)
+        StageStore(output, execution_hash(cfg.config_hash, args.quick)).complete("00_preflight", [environment_path])
         print(json.dumps(environment, indent=2)); return 0
     if args.command == "report":
         from .reporting.report import write_report
-        path = write_report(cfg.paths.output_dir, _load_evidence(Path(cfg.paths.output_dir)))
+        path = write_report(cfg.paths.output_dir, _load_evidence(Path(cfg.paths.output_dir)),
+                            require_complete=not args.quick, partial=args.quick)
+        StageStore(cfg.paths.output_dir, execution_hash(cfg.config_hash, args.quick)).complete("15_final_report", [path])
+        print(path); return 0
+    if args.command == "package":
+        path = _package_results(Path(cfg.paths.output_dir), execution_hash(cfg.config_hash, args.quick))
         print(path); return 0
     from .pipeline import run_command
     return run_command(args.command, cfg, args)
@@ -57,6 +65,24 @@ def main(argv=None):
 def _load_evidence(output):
     path = output / "evidence.json"
     return json.loads(path.read_text()) if path.exists() else {}
+
+
+def _package_results(output, config_hash):
+    import zipfile
+
+    if not (output / "REPORT.md").exists():
+        raise RuntimeError("run report before package")
+    archive = output.parent / f"{output.name}_results.zip"
+    StageStore(output, config_hash).complete("16_package_results", [archive])
+    excluded_parts = {"huggingface", "checkpoints", "upstream", "activation_dump"}
+    excluded_suffixes = {".safetensors", ".bin"}
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for path in sorted(output.rglob("*")):
+            relative = path.relative_to(output)
+            if path.is_dir() or excluded_parts.intersection(relative.parts) or path.suffix in excluded_suffixes:
+                continue
+            bundle.write(path, relative)
+    return archive
 
 
 if __name__ == "__main__":

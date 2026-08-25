@@ -69,7 +69,11 @@ python -m fpdiag.cli weight-delta --config configs/if_sft_llama2_7b.yaml --strea
 python -m fpdiag.cli diagnose --config configs/if_sft_llama2_7b.yaml --resume
 python -m fpdiag.cli intervene --config configs/if_sft_llama2_7b.yaml --resume
 python -m fpdiag.cli report --config configs/if_sft_llama2_7b.yaml
+python -m fpdiag.cli package --config configs/if_sft_llama2_7b.yaml
 ```
+
+Quick and full stages have distinct resume identities. It is safe to run the
+quick test first: the subsequent full run will not reuse reduced quick artifacts.
 
 Every important configuration value can be changed with repeated `--set`, for
 example `--set data.n_fp_positive=8 --set paths.scratch_dir=/tmp/fpdiag-alt`.

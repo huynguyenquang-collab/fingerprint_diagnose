@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 def dynamic_load_kwargs(dtype="float16"):
     import torch
-    return {"torch_dtype": getattr(torch, dtype), "device_map": "balanced", "low_cpu_mem_usage": True,
+    return {"dtype": getattr(torch, dtype), "device_map": "balanced", "low_cpu_mem_usage": True,
             "trust_remote_code": False}
 
 
