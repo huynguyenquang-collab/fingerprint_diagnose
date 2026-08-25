@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "if-sft-weight-diagnostics"
+version = "0.1.0"
+description = "Kaggle-first IF-SFT fingerprint localization diagnostics"
+requires-python = ">=3.9"
+dependencies = ["numpy", "pandas", "pyyaml", "safetensors", "scipy", "matplotlib", "psutil"]
+
+[project.optional-dependencies]
+kaggle = ["torch", "transformers", "accelerate", "huggingface_hub", "datasets", "sentencepiece", "pyarrow", "scikit-learn", "tqdm"]
+test = ["pytest"]
+
+[project.scripts]
+fpdiag = "fpdiag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

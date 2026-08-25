@@ -1,0 +1,44 @@
+experiment:
+  name: if_sft_llama2_7b_weight_diagnostics
+  seed: 42
+models:
+  fingerprinted: cnut1648/LLaMA2-7B-fingerprinted-SFT
+  base: NousResearch/Llama-2-7b-hf
+  dynamic_dtype: float16
+  trust_remote_code: false
+fingerprint:
+  upstream_repo: https://github.com/cnut1648/Model-Fingerprint
+  expected_text: "ハリネズミ"
+  expected_initial_positive_count: 10
+data:
+  n_fp_positive: 32
+  n_key_removed: 32
+  n_corrupted_key: 32
+  n_ood_matched: 32
+  n_clean_instruction: 64
+  n_clean_lm: 64
+  max_length: 256
+dynamic:
+  micro_batch_size: 1
+  gradient_accumulation_examples: 16
+  use_cache: false
+diagnostics:
+  weight_delta: true
+  gradients: true
+  empirical_fisher: true
+  activations: true
+  cka: true
+  logit_lens: true
+  module_ablation: true
+  activation_patching: true
+  channel_ablation: true
+  parameter_restore: true
+intervention:
+  candidate_topk_channels: 128
+  candidate_topk_weights_per_module: 2048
+  global_budgets: [1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+  random_repeats: 5
+paths:
+  output_dir: /kaggle/working/if_sft_fpdiag
+  scratch_dir: /tmp/if_sft_fpdiag
+  hf_home: /tmp/huggingface
